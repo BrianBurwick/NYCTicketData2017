@@ -1,0 +1,213 @@
+scp NYC_Violations_2017.csv bburwic@129.153.114.72:/home/bburwic/
+
+hdfs dfs -mkdir NYCTicketData
+hdfs dfs -mkdir NYCTicketData/2017
+
+hdfs dfs -ls
+
+hdfs dfs -put NYC_Violations_2017.csv NYCTicketData/2017
+hdfs dfs -ls NYCTicketData/2017
+
+CREATE DATABASE if not exists group3;
+use group3;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS 2017data(
+summons_number BIGINT,
+  plate_id STRING,
+  registration_state STRING,
+  plate_type STRING,
+  issue_date DATE,
+  violation_code INT,
+  vehicle_body_type STRING,
+  vehicle_make STRING,
+  issuing_agency STRING,
+  street_code_1 INT,
+  street_code_2 INT,
+  street_code_3 INT,
+  vehicle_expiration_date INT,
+  violation_location STRING,
+  violation_precinct INT,
+  issuer_precinct INT,
+  issuer_code INT,
+  issuer_command STRING,
+  issuer_squad STRING,
+  violation_time STRING,
+  time_first_observed STRING,
+  violation_county STRING,
+  violation_in_front_of_or_opposite STRING,
+  house_number STRING,
+  street_name STRING,
+  intersecting_street STRING,
+  date_first_observed INT,
+  law_section INT,
+  sub_division STRING,
+  violation_legal_code STRING,
+  days_parking_in_effect STRING,
+  from_hours_in_effect STRING,
+  to_hours_in_effect STRING,
+  vehicle_color STRING,
+  unregistered_vehicle STRING,
+  vehicle_year INT,
+  meter_number STRING,
+  feet_from_curb INT,
+  violation_post_code STRING,
+  violation_description STRING,
+  no_standing_or_stopping_violation STRING,
+  hydrant_violation STRING,
+  double_parking_violation STRING
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/bburwic/NYCTicketData/2017'
+TBLPROPERTIES ('skip.header.line.count'='1', "dateFormat"="MM/dd/yyyy");
+
+CREATE TABLE 2017data_new AS
+SELECT 
+    summons_number,
+    plate_id,
+    registration_state,
+    plate_type,
+    TO_DATE(from_unixtime(unix_timestamp(issue_date, 'mm/dd/yyyy'), 'yyyy-mm-dd')) AS issue_date,
+    violation_code,
+    vehicle_body_type,
+    vehicle_make,
+    issuing_agency,
+    street_code_1,
+    street_code_2,
+    street_code_3,
+    vehicle_expiration_date,
+    violation_location,
+    violation_precinct,
+    issuer_precinct,
+    issuer_code,
+    issuer_command,
+    issuer_squad,
+    violation_time,
+    time_first_observed,
+    violation_county,
+    violation_in_front_of_or_opposite,
+    house_number,
+    street_name,
+    intersecting_street,
+    date_first_observed,
+    law_section,
+    sub_division,
+    violation_legal_code,
+    days_parking_in_effect,
+    from_hours_in_effect,
+    to_hours_in_effect,
+    vehicle_color,
+    unregistered_vehicle,
+    vehicle_year,
+    meter_number,
+    feet_from_curb,
+    violation_post_code,
+    violation_description,
+    no_standing_or_stopping_violation,
+    hydrant_violation,
+    double_parking_violation
+FROM 2017data;
+
+hdfs dfs -mkdir NYCTicketData/2017/ViolationData2017_New
+
+CREATE TABLE ViolationData2017_new (
+  summons_number int,
+  issue_date date,
+  violation_code int,
+  violation_precinct int,
+  violation_county string,
+  address string
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION 'NYCTicketData/2017/ViolationData2017_New';
+
+INSERT INTO TABLE ViolationData2017_new
+SELECT summons_number, issue_date, violation_code, violation_precinct, violation_county, CONCAT_WS(' ', house_number, street_name) AS address
+FROM ViolationData2017;
+
+CREATE TABLE ViolationData2017_bx2
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION 'NYCTicketData/2017/ViolationData2017_bx2'
+AS 
+SELECT summons_number, issue_date, violation_code, violation_precinct,
+  CONCAT(address, ' Bronx New York') AS address_new
+FROM ViolationData2017_new
+WHERE violation_county = 'BX' AND issue_date BETWEEN '2017-01-01' AND '2017-12-31';
+
+
+CREATE TABLE ViolationData2017_k2
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION 'NYCTicketData/2017/ViolationData2017_k2'
+AS 
+SELECT summons_number, issue_date, violation_code, violation_precinct,
+  CONCAT(address, ' Kings New York') AS address_new
+FROM ViolationData2017_new
+WHERE violation_county = 'K' AND issue_date BETWEEN '2017-01-01' AND '2017-12-31';
+
+CREATE TABLE ViolationData2017_q2
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION 'NYCTicketData/2017/ViolationData2017_q2'
+AS 
+SELECT summons_number, issue_date, violation_code, violation_precinct,
+  CONCAT(address, ' Queens New York') AS address_new
+FROM ViolationData2017_new
+WHERE violation_county = 'Q' AND issue_date BETWEEN '2017-01-01' AND '2017-12-31';
+
+
+
+hdfs dfs -getmerge /user/bburwic/NYCTicketData/2017/ViolationData2017_bx2 bronxviolations.csv
+
+scp bburwic@129.153.114.72:/home/bburwic/bronxviolations.csv bronxviolations.csv
+
+
+hdfs dfs -getmerge /user/bburwic/NYCTicketData/2017/ViolationData2017_k2 kingsviolations.csv
+
+scp bburwic@129.153.114.72:/home/bburwic/kingsviolations.csv kingsviolations.csv
+
+
+hdfs dfs -getmerge /user/bburwic/NYCTicketData/2017/ViolationData2017_q2 queensviolations.csv
+
+scp bburwic@129.153.114.72:/home/bburwic/queensviolations.csv queensviolations.csv
+
+Queries:
+
+Find the top 10 vehicle makes that received the most tickets in 2017:
+SELECT vehicle_make, COUNT(*) as num_tickets
+FROM VehicleData2017
+GROUP BY vehicle_make
+ORDER BY num_tickets DESC
+LIMIT 10;
+
+Top 50 most ticketed days according to the data set:
+SELECT issue_date, COUNT(*) as num_tickets
+FROM ViolationData2017
+WHERE issue_date IS NOT NULL
+GROUP BY issue_date
+ORDER BY num_tickets DESC
+LIMIT 50;
+
+
+Find the top 5 precincts that issued the most tickets in 2017:
+SELECT violation_precinct, COUNT(*) as num_tickets
+FROM ViolationData2017
+GROUP BY violation_precinct
+ORDER BY num_tickets DESC
+LIMIT 5;
+
+Find the number of tickets issued per street name:
+SELECT street_name, COUNT(*) as num_tickets
+FROM LocationData2017
+GROUP BY street_name
+ORDER BY num_tickets DESC
+LIMIT 50;
+
+Find the total tickets issued in all of 2017:
+SELECT COUNT(*) AS total_tickets FROM 2017data_new;
+
+Find the total tickets issued in each county:
+SELECT COUNT(*) AS total_tickets FROM ViolationData2017_BX2;
+
+SELECT COUNT(*) AS total_tickets FROM ViolationData2017_Q2;
+
+SELECT COUNT(*) AS total_tickets FROM ViolationData2017_K2;
+
