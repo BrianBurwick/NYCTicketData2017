@@ -171,32 +171,42 @@ scp bburwic@129.153.114.72:/home/bburwic/queensviolations.csv queensviolations.c
 
 Queries:
 
-Find the top 10 vehicle makes that received the most tickets in 2017:
+Find the top 10 violation codes:
+SELECT violation_code, COUNT(*) as num_violations
+FROM ViolationData2017
+WHERE violation_code IS NOT NULL
+GROUP BY violation_code
+ORDER BY num_violations DESC
+LIMIT 10;
+
+Find top 10 vehicle makes:
 SELECT vehicle_make, COUNT(*) as num_tickets
 FROM VehicleData2017
+WHERE vehicle_make REGEXP '^[^0-9]+$' AND vehicle_make IS NOT NULL
 GROUP BY vehicle_make
 ORDER BY num_tickets DESC
 LIMIT 10;
 
+Find the top 5 precincts that issued the most tickets in 2017:
+SELECT violation_precinct, COUNT(*) as num_tickets
+FROM ViolationData2017
+WHERE violation_precinct IS NOT NULL AND violation_precinct != 0
+GROUP BY violation_precinct
+ORDER BY num_tickets DESC
+LIMIT 5;
+
 Top 50 most ticketed days according to the data set:
 SELECT issue_date, COUNT(*) as num_tickets
-FROM ViolationData2017
+FROM ViolationData2017_bx2
 WHERE issue_date IS NOT NULL
 GROUP BY issue_date
 ORDER BY num_tickets DESC
 LIMIT 50;
 
-
-Find the top 5 precincts that issued the most tickets in 2017:
-SELECT violation_precinct, COUNT(*) as num_tickets
-FROM ViolationData2017
-GROUP BY violation_precinct
-ORDER BY num_tickets DESC
-LIMIT 5;
-
 Find the number of tickets issued per street name:
 SELECT street_name, COUNT(*) as num_tickets
 FROM LocationData2017
+WHERE street_name IS NOT NULL
 GROUP BY street_name
 ORDER BY num_tickets DESC
 LIMIT 50;
@@ -210,4 +220,3 @@ SELECT COUNT(*) AS total_tickets FROM ViolationData2017_BX2;
 SELECT COUNT(*) AS total_tickets FROM ViolationData2017_Q2;
 
 SELECT COUNT(*) AS total_tickets FROM ViolationData2017_K2;
-
